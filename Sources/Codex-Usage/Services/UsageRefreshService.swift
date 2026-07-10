@@ -48,3 +48,12 @@ final class UsageRefreshService: ObservableObject {
         isLoading = false
     }
 }
+
+#if DEBUG
+extension UsageRefreshService {
+    convenience init(previewSnapshot snapshot: UsageSnapshot) {
+        self.init()
+        self.snapshot = snapshot
+    }
+}
+#endif

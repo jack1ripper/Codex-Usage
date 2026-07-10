@@ -1,8 +1,12 @@
 import SwiftUI
+import Combine
 
 struct FloatingBallView: View {
     @ObservedObject var service: UsageRefreshService
     let onRefresh: () -> Void
+    let onQuit: () -> Void
+
+    @State private var now = Date()
 
     private var snapshot: UsageSnapshot? { service.snapshot }
     private var error: UsageError? { service.error }
@@ -31,7 +35,10 @@ struct FloatingBallView: View {
         .contextMenu {
             Button("Refresh") { onRefresh() }
             Divider()
-            Button("Quit") { NSApplication.shared.terminate(nil) }
+            Button("Quit") { onQuit() }
+        }
+        .onReceive(Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()) { _ in
+            now = Date()
         }
     }
 
@@ -42,8 +49,13 @@ struct FloatingBallView: View {
 
             VStack(spacing: 2) {
                 Text(countdownText)
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
+                    .lineLimit(1)
+
+                Text("until reset")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
 
                 HStack(spacing: 12) {
                     percentLabel(title: "5h", window: primaryWindow)
@@ -80,16 +92,14 @@ struct FloatingBallView: View {
     }
 
     private var countdownText: String {
-        let now = Date()
         let candidates = [primaryWindow?.resetsAt, secondaryWindow?.resetsAt].compactMap { $0 }
         guard let nearest = candidates.filter({ $0 > now }).min() else {
             return "—"
         }
 
         let totalSeconds = nearest.timeIntervalSince(now)
-        let totalMinutes = max(0, Int(totalSeconds / 60))
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
+        let hours = Int(totalSeconds) / 3600
+        let minutes = (Int(totalSeconds) % 3600) / 60
 
         if hours > 0 {
             return "\(hours)h \(minutes)m"
@@ -101,11 +111,11 @@ struct FloatingBallView: View {
     private func percentLabel(title: String, window: UsageWindow?) -> some View {
         VStack(spacing: 0) {
             Text(title)
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.white.opacity(0.7))
 
             Text(window.map { "\(Int($0.remainingPercent))%" } ?? "—")
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 10))
                 .foregroundColor(.white)
         }
     }
@@ -142,5 +152,21 @@ struct FloatingBallView: View {
 }
 
 #Preview {
-    FloatingBallView(service: UsageRefreshService(), onRefresh: {})
+    FloatingBallView(
+        service: UsageRefreshService(previewSnapshot: UsageSnapshot(
+            primary: UsageWindow(
+                usedPercent: 30,
+                windowMinutes: 300,
+                resetsAt: Date().addingTimeInterval(3600)
+            ),
+            secondary: UsageWindow(
+                usedPercent: 60,
+                windowMinutes: 10080,
+                resetsAt: Date().addingTimeInterval(86400)
+            ),
+            fetchedAt: Date()
+        )),
+        onRefresh: {},
+        onQuit: {}
+    )
 }
