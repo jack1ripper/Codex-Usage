@@ -21,13 +21,17 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
     <key>CFBundleExecutable</key>
     <string>$APP_NAME</string>
     <key>CFBundleIdentifier</key>
-    <string>com.yourcompany.Codex-Usage</string>
+    <string>com.codexusage.Codex-Usage</string>
     <key>CFBundleName</key>
     <string>Codex-Usage</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>LSUIElement</key>
@@ -35,5 +39,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 </dict>
 </plist>
 EOF
+
+codesign --force --deep --sign - "$APP_BUNDLE"
 
 echo "Built $APP_BUNDLE"

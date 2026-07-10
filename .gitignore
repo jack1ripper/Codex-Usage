@@ -2,4 +2,5 @@
 .build
 xcuserdata
 *.xcodeproj
+*.app
 .worktrees/

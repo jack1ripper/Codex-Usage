@@ -152,6 +152,7 @@ struct FloatingBallView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     FloatingBallView(
         service: UsageRefreshService(previewSnapshot: UsageSnapshot(
@@ -171,3 +172,4 @@ struct FloatingBallView: View {
         onQuit: {}
     )
 }
+#endif
