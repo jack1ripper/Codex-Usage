@@ -4,19 +4,26 @@ struct SettingsView: View {
     @AppStorage("refreshInterval") private var refreshInterval: Double = 60
     @AppStorage("codexCLIPath") private var codexCLIPath: String = ""
 
+    private var refreshIntervalBinding: Binding<Double> {
+        Binding<Double>(
+            get: { min(300, max(10, refreshInterval)) },
+            set: { refreshInterval = min(300, max(10, $0)) }
+        )
+    }
+
     var body: some View {
         Form {
             Section {
                 HStack {
                     Text("Refresh interval")
                     Spacer()
-                    Text("\(Int(refreshInterval))s")
+                    Text("\(Int(refreshIntervalBinding.wrappedValue))s")
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
 
                 Slider(
-                    value: $refreshInterval,
+                    value: refreshIntervalBinding,
                     in: 10...300,
                     step: 10
                 ) {

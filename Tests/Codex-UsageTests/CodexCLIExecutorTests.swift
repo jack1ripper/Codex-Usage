@@ -19,6 +19,13 @@ final class CodexCLIExecutorTests: XCTestCase {
         return path
     }
 
+    private func temporaryDirectory() throws -> String {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        return directory.path
+    }
+
     override func setUp() {
         super.setUp()
         setCodexCLIPathOverride(nil)
@@ -39,7 +46,7 @@ final class CodexCLIExecutorTests: XCTestCase {
         XCTAssertTrue(executor.isInstalled)
     }
 
-    func testResolveCodexExecutableIgnoresInvalidUserDefaultsOverride() throws {
+    func testResolveCodexExecutableIgnoresNonexistentOverride() throws {
         setCodexCLIPathOverride("/nonexistent/path/to/codex")
 
         let executor = DefaultCodexCLIExecutor()
@@ -50,6 +57,59 @@ final class CodexCLIExecutorTests: XCTestCase {
         // returned.
         let resolved = executor.resolveCodexExecutable()
         XCTAssertNotEqual(resolved, "/nonexistent/path/to/codex")
+    }
+
+    func testResolveCodexExecutableRejectsRelativeOverride() throws {
+        let path = try temporaryExecutable()
+        // Use a relative path to the same valid file.
+        let relative = (path as NSString).lastPathComponent
+        setCodexCLIPathOverride(relative)
+
+        let executor = DefaultCodexCLIExecutor()
+
+        let resolved = executor.resolveCodexExecutable()
+        XCTAssertNotEqual(resolved, path)
+        XCTAssertNotEqual(resolved, relative)
+    }
+
+    func testResolveCodexExecutableRejectsOverrideWithWrongName() throws {
+        let directory = try temporaryDirectory()
+        let path = (directory as NSString).appendingPathComponent("not-codex")
+        FileManager.default.createFile(atPath: path, contents: Data("#!/bin/sh\n".utf8))
+        setCodexCLIPathOverride(path)
+
+        let executor = DefaultCodexCLIExecutor()
+
+        XCTAssertNotEqual(executor.resolveCodexExecutable(), path)
+    }
+
+    func testResolveCodexExecutableRejectsDirectoryOverride() throws {
+        let directory = try temporaryDirectory()
+        setCodexCLIPathOverride(directory)
+
+        let executor = DefaultCodexCLIExecutor()
+
+        XCTAssertNotEqual(executor.resolveCodexExecutable(), directory)
+    }
+
+    func testResolveCodexExecutableRejectsOverrideWithControlCharacters() throws {
+        let path = try temporaryExecutable()
+        let directory = (path as NSString).deletingLastPathComponent
+        let malicious = (directory as NSString).appendingPathComponent("co\ndex")
+        setCodexCLIPathOverride(malicious)
+
+        let executor = DefaultCodexCLIExecutor()
+
+        XCTAssertNil(executor.resolveCodexExecutable())
+    }
+
+    func testResolveCodexExecutableTrimsLeadingAndTrailingWhitespace() throws {
+        let path = try temporaryExecutable()
+        setCodexCLIPathOverride("  \(path)  ")
+
+        let executor = DefaultCodexCLIExecutor()
+
+        XCTAssertEqual(executor.resolveCodexExecutable(), path)
     }
 
     func testExecuteUsesResolvedExecutablePath() throws {

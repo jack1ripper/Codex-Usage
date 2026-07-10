@@ -49,8 +49,23 @@ struct DefaultCodexCLIExecutor: CodexCLIExecutor {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let override, !override.isEmpty else { return nil }
 
-        let expanded = NSString(string: override).expandingTildeInPath
-        return fileExistsAtPath(expanded) ? expanded : nil
+        return validatedOverridePath(override)
+    }
+
+    private func validatedOverridePath(_ path: String) -> String? {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.hasPrefix("/"),
+              (trimmed as NSString).lastPathComponent == "codex",
+              trimmed.rangeOfCharacter(from: .controlCharacters) == nil else {
+            return nil
+        }
+
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: trimmed, isDirectory: &isDir),
+              !isDir.boolValue else {
+            return nil
+        }
+        return trimmed
     }
 
     private func resolveCommonInstallLocation() -> String? {

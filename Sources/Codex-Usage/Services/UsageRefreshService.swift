@@ -64,11 +64,9 @@ final class UsageRefreshService: ObservableObject {
     internal var isTimerActive: Bool { timer != nil }
 
     private static func readRefreshInterval(from userDefaults: UserDefaults) -> TimeInterval {
+        guard userDefaults.object(forKey: "refreshInterval") != nil else { return 60 }
         let value = userDefaults.double(forKey: "refreshInterval")
-        if value >= 10 && value <= 300 {
-            return value
-        }
-        return 60
+        return min(300, max(10, value))
     }
 
     private func observeRefreshIntervalChanges() {

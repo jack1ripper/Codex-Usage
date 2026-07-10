@@ -103,7 +103,7 @@ final class UsageRefreshServiceTests: XCTestCase {
         let mock = MockCodexRPCClient()
         await mock.setResult(.success(snapshot))
         let defaults = makeUserDefaults()
-        defaults.set(1.0, forKey: "refreshInterval")
+        defaults.set(10.0, forKey: "refreshInterval")
         let service = UsageRefreshService(rpcClient: mock, userDefaults: defaults)
 
         service.start()
@@ -122,23 +122,35 @@ final class UsageRefreshServiceTests: XCTestCase {
 
         let service = UsageRefreshService(userDefaults: defaults)
 
-        // The interval is private; verify indirectly by starting the service and
-        // confirming it accepts the value without falling back to the default.
+        XCTAssertEqual(service.currentRefreshInterval, 120.0)
         service.start()
         service.stop()
-        XCTAssertEqual(defaults.double(forKey: "refreshInterval"), 120.0)
     }
 
-    func testFallsBackToDefaultRefreshIntervalWhenUserDefaultsValueIsOutOfRange() {
+    func testUsesDefaultRefreshIntervalWhenKeyIsMissing() {
+        let defaults = makeUserDefaults()
+
+        let service = UsageRefreshService(userDefaults: defaults)
+
+        XCTAssertEqual(service.currentRefreshInterval, 60.0)
+    }
+
+    func testClampsRefreshIntervalBelowMinimum() {
         let defaults = makeUserDefaults()
         defaults.set(5.0, forKey: "refreshInterval")
 
         let service = UsageRefreshService(userDefaults: defaults)
-        service.start()
-        service.stop()
 
-        // No direct assertion possible, but the service must start without crashing.
-        XCTAssertEqual(defaults.double(forKey: "refreshInterval"), 5.0)
+        XCTAssertEqual(service.currentRefreshInterval, 10.0)
+    }
+
+    func testClampsRefreshIntervalAboveMaximum() {
+        let defaults = makeUserDefaults()
+        defaults.set(500.0, forKey: "refreshInterval")
+
+        let service = UsageRefreshService(userDefaults: defaults)
+
+        XCTAssertEqual(service.currentRefreshInterval, 300.0)
     }
 
     func testRecreatesTimerWhenRefreshIntervalChanges() {
