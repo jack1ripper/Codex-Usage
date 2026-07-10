@@ -11,7 +11,19 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
         super.init()
     }
 
+    deinit {
+        // `deinit` is non-isolated, so stop the service asynchronously on the
+        // main actor. Callers should close the window explicitly via `close()`
+        // to ensure the timer is stopped synchronously.
+        let service = self.service
+        Task { @MainActor in
+            service.stop()
+        }
+    }
+
     func show() {
+        guard window == nil else { return }
+
         let panel = NSPanel(
             contentRect: NSRect(x: 100, y: 100, width: 140, height: 140),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -46,11 +58,21 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
         service.start()
     }
 
+    /// Closes the floating panel and stops the refresh service.
+    func close() {
+        window?.close()
+    }
+
     // MARK: - NSWindowDelegate
 
     func windowDidMove(_ notification: Notification) {
         guard let window = window else { return }
         savePosition(of: window)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        service.stop()
+        window = nil
     }
 
     // MARK: - Position persistence
@@ -63,10 +85,12 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
 
     private func restorePosition(for window: NSWindow) {
         let defaultOrigin = NSPoint(x: 100, y: 100)
-        let savedX = UserDefaults.standard.double(forKey: "floatingBallX")
-        let savedY = UserDefaults.standard.double(forKey: "floatingBallY")
-        let savedOrigin = NSPoint(x: savedX == 0 ? defaultOrigin.x : savedX,
-                                  y: savedY == 0 ? defaultOrigin.y : savedY)
+        let savedX = UserDefaults.standard.object(forKey: "floatingBallX") as? Double
+        let savedY = UserDefaults.standard.object(forKey: "floatingBallY") as? Double
+        let savedOrigin = NSPoint(
+            x: savedX.map { CGFloat($0) } ?? defaultOrigin.x,
+            y: savedY.map { CGFloat($0) } ?? defaultOrigin.y
+        )
 
         let screen = window.screen ?? NSScreen.main
         let visibleFrame = screen?.visibleFrame ?? NSRect(origin: .zero, size: window.frame.size)
