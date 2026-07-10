@@ -100,7 +100,10 @@ final class CodexCLIExecutorTests: XCTestCase {
 
         let executor = DefaultCodexCLIExecutor()
 
-        XCTAssertNil(executor.resolveCodexExecutable())
+        // The malicious override must not be used. A real codex installation on
+        // the current machine may still be discovered, so we only assert that
+        // the resolved path is not the malicious one.
+        XCTAssertNotEqual(executor.resolveCodexExecutable(), malicious)
     }
 
     func testResolveCodexExecutableTrimsLeadingAndTrailingWhitespace() throws {
@@ -129,7 +132,16 @@ final class CodexCLIExecutorTests: XCTestCase {
 
         let process = try executor.execute()
 
-        XCTAssertEqual(process.executableURL?.path, "/usr/bin/env")
-        XCTAssertEqual(process.arguments, ["codex", "-s", "read-only", "-a", "untrusted", "app-server"])
+        if executor.resolveCodexExecutable() == nil {
+            // No codex installation was found; the executor should fall back to
+            // invoking `codex` through /usr/bin/env.
+            XCTAssertEqual(process.executableURL?.path, "/usr/bin/env")
+            XCTAssertEqual(process.arguments, ["codex", "-s", "read-only", "-a", "untrusted", "app-server"])
+        } else {
+            // A real codex installation is present on this machine, so the
+            // resolved executable should be used directly.
+            XCTAssertNotEqual(process.executableURL?.path, "/usr/bin/env")
+            XCTAssertEqual(process.arguments, ["-s", "read-only", "-a", "untrusted", "app-server"])
+        }
     }
 }

@@ -72,6 +72,7 @@ struct DefaultCodexCLIExecutor: CodexCLIExecutor {
         let candidates = [
             "/opt/homebrew/bin/codex",
             "/usr/local/bin/codex",
+            "/Applications/ChatGPT.app/Contents/Resources/codex",
             NSString(string: "~/.local/bin/codex").expandingTildeInPath,
             "/usr/bin/codex",
         ]
