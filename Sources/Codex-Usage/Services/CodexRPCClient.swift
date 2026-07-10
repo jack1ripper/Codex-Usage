@@ -79,7 +79,12 @@ actor CodexRPCClient {
         process.standardError = stderr
 
         currentProcess = process
-        defer { currentProcess = nil }
+        defer {
+            if process.isRunning {
+                process.terminate()
+            }
+            currentProcess = nil
+        }
 
         try process.run()
 
