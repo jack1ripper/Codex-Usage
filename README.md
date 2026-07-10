@@ -7,6 +7,7 @@ A minimalist macOS floating-ball widget for OpenAI Codex usage.
 - Shows countdown to the nearest reset.
 - Drag to reposition; position is remembered.
 - Auto-refreshes every 60 seconds.
+- Status bar menu to show, refresh, open settings, or quit when the ball is closed.
 
 ## Requirements
 - macOS 14+
@@ -22,8 +23,11 @@ swift build
 
 ```bash
 ./Scripts/build_app.sh
-open Codex-Usage.app
+./Scripts/install.sh
+open /Applications/Codex-Usage.app
 ```
+
+`build_app.sh` creates `Codex-Usage.app` in the project root. `install.sh` copies it to `/Applications` so it appears in Launchpad and Spotlight.
 
 ## Data Source
 

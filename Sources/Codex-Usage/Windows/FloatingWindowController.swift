@@ -6,6 +6,7 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
     private let service: UsageRefreshService
     private var window: NSPanel?
     private var settingsWindow: NSWindow?
+    private var settingsWindowDelegate: SettingsWindowDelegate?
 
     init(service: UsageRefreshService) {
         self.service = service
@@ -23,7 +24,10 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
     }
 
     func show() {
-        guard window == nil else { return }
+        if let window = window {
+            window.orderFrontRegardless()
+            return
+        }
 
         let panel = NSPanel(
             contentRect: NSRect(x: 100, y: 100, width: 140, height: 140),
@@ -39,6 +43,7 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
         panel.hasShadow = false
         panel.ignoresMouseEvents = false
         panel.isMovableByWindowBackground = true
+        panel.hidesOnDeactivate = false
         panel.delegate = self
 
         let contentView = FloatingBallView(
@@ -62,6 +67,16 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
         service.start()
     }
 
+    /// Brings the floating panel to the front, recreating it if it was closed.
+    func bringToFront() {
+        show()
+    }
+
+    /// Triggers a manual refresh of the usage data.
+    func refresh() {
+        Task { await service.refresh() }
+    }
+
     /// Closes the floating panel and stops the refresh service.
     func close() {
         window?.close()
@@ -69,12 +84,13 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Settings window
 
-    private func showSettings() {
+    func showSettings() {
         if let settingsWindow = settingsWindow {
             settingsWindow.makeKeyAndOrderFront(nil)
             return
         }
 
+        let delegate = SettingsWindowDelegate(controller: self)
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 360, height: 200),
             styleMask: [.titled, .closable],
@@ -84,9 +100,15 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
         window.title = "Settings"
         window.contentView = NSHostingView(rootView: SettingsView())
         window.center()
-        window.delegate = self
+        window.delegate = delegate
         settingsWindow = window
+        settingsWindowDelegate = delegate
         window.makeKeyAndOrderFront(nil)
+    }
+
+    fileprivate func settingsWindowDidClose() {
+        settingsWindow = nil
+        settingsWindowDelegate = nil
     }
 
     // MARK: - NSWindowDelegate
@@ -98,14 +120,10 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        guard let closingWindow = notification.object as? NSWindow else { return }
-
-        if closingWindow == settingsWindow {
-            settingsWindow = nil
-        } else if closingWindow == window {
-            service.stop()
-            window = nil
-        }
+        guard let closingWindow = notification.object as? NSWindow,
+              closingWindow == window else { return }
+        service.stop()
+        window = nil
     }
 
     // MARK: - Position persistence
@@ -134,5 +152,23 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
         )
 
         window.setFrameOrigin(clampedOrigin)
+    }
+}
+
+// MARK: - Settings window delegate
+
+/// A dedicated delegate for the Settings window so that its lifecycle is
+/// isolated from the main floating panel.
+@MainActor
+private final class SettingsWindowDelegate: NSObject, NSWindowDelegate {
+    private weak var controller: FloatingWindowController?
+
+    init(controller: FloatingWindowController) {
+        self.controller = controller
+        super.init()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        controller?.settingsWindowDidClose()
     }
 }

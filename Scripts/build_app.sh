@@ -43,3 +43,4 @@ EOF
 codesign --force --deep --sign - "$APP_BUNDLE"
 
 echo "Built $APP_BUNDLE"
+echo "Run './Scripts/install.sh' to copy it to /Applications."
