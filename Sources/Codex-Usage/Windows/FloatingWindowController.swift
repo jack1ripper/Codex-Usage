@@ -5,6 +5,7 @@ import AppKit
 final class FloatingWindowController: NSObject, NSWindowDelegate {
     private let service: UsageRefreshService
     private var window: NSPanel?
+    private var settingsWindow: NSWindow?
 
     init(service: UsageRefreshService) {
         self.service = service
@@ -45,6 +46,9 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
             onRefresh: { [weak service] in
                 Task { await service?.refresh() }
             },
+            onSettings: { [weak self] in
+                self?.showSettings()
+            },
             onQuit: {
                 NSApplication.shared.terminate(nil)
             }
@@ -63,16 +67,45 @@ final class FloatingWindowController: NSObject, NSWindowDelegate {
         window?.close()
     }
 
+    // MARK: - Settings window
+
+    private func showSettings() {
+        if let settingsWindow = settingsWindow {
+            settingsWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 200),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Settings"
+        window.contentView = NSHostingView(rootView: SettingsView())
+        window.center()
+        window.delegate = self
+        settingsWindow = window
+        window.makeKeyAndOrderFront(nil)
+    }
+
     // MARK: - NSWindowDelegate
 
     func windowDidMove(_ notification: Notification) {
-        guard let window = window else { return }
+        guard let window = window,
+              notification.object as? NSWindow == window else { return }
         savePosition(of: window)
     }
 
     func windowWillClose(_ notification: Notification) {
-        service.stop()
-        window = nil
+        guard let closingWindow = notification.object as? NSWindow else { return }
+
+        if closingWindow == settingsWindow {
+            settingsWindow = nil
+        } else if closingWindow == window {
+            service.stop()
+            window = nil
+        }
     }
 
     // MARK: - Position persistence

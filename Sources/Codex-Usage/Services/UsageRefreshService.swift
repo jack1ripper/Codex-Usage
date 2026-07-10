@@ -8,12 +8,19 @@ final class UsageRefreshService: ObservableObject {
     @Published private(set) var isLoading: Bool = false
     
     private let rpcClient: CodexRPCClientProtocol
+    private let userDefaults: UserDefaults
     private var timer: Timer?
-    private let refreshInterval: TimeInterval
+    private var refreshInterval: TimeInterval
     
-    init(rpcClient: CodexRPCClientProtocol = CodexRPCClient(), refreshInterval: TimeInterval = 60) {
+    init(rpcClient: CodexRPCClientProtocol = CodexRPCClient(), userDefaults: UserDefaults = .standard) {
         self.rpcClient = rpcClient
-        self.refreshInterval = refreshInterval
+        self.userDefaults = userDefaults
+        self.refreshInterval = Self.readRefreshInterval(from: userDefaults)
+        observeRefreshIntervalChanges()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     func start() {
@@ -46,6 +53,48 @@ final class UsageRefreshService: ObservableObject {
             self.error = .rpcFailed(error.localizedDescription)
         }
         isLoading = false
+    }
+
+    // MARK: - Refresh interval
+
+    /// The current refresh interval in seconds.
+    internal var currentRefreshInterval: TimeInterval { refreshInterval }
+
+    /// Whether the refresh timer is currently active.
+    internal var isTimerActive: Bool { timer != nil }
+
+    private static func readRefreshInterval(from userDefaults: UserDefaults) -> TimeInterval {
+        let value = userDefaults.double(forKey: "refreshInterval")
+        if value >= 10 && value <= 300 {
+            return value
+        }
+        return 60
+    }
+
+    private func observeRefreshIntervalChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(refreshIntervalDidChange),
+            name: UserDefaults.didChangeNotification,
+            object: userDefaults
+        )
+    }
+
+    @objc private func refreshIntervalDidChange() {
+        applyRefreshIntervalFromUserDefaults()
+    }
+
+    /// Reads the current refresh interval from `UserDefaults` and recreates the
+    /// timer if the service is already running and the interval changed.
+    func applyRefreshIntervalFromUserDefaults() {
+        let newInterval = Self.readRefreshInterval(from: userDefaults)
+        guard newInterval != refreshInterval else { return }
+
+        refreshInterval = newInterval
+        if timer != nil {
+            stop()
+            start()
+        }
     }
 }
 

@@ -8,12 +8,62 @@ protocol CodexCLIExecutor: Sendable {
 struct DefaultCodexCLIExecutor: CodexCLIExecutor {
     func execute() throws -> Process {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = ["codex", "-s", "read-only", "-a", "untrusted", "app-server"]
+
+        if let executablePath = resolveCodexExecutable() {
+            process.executableURL = URL(fileURLWithPath: executablePath)
+            process.arguments = ["-s", "read-only", "-a", "untrusted", "app-server"]
+        } else {
+            // Fall back to PATH resolution; `CodexRPCClient` will report
+            // `cliNotFound` via `isInstalled` if this cannot be resolved.
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = ["codex", "-s", "read-only", "-a", "untrusted", "app-server"]
+        }
+
         return process
     }
 
     var isInstalled: Bool {
+        resolveCodexExecutable() != nil
+    }
+
+    /// Returns the first valid `codex` executable path from:
+    /// 1. The `codexCLIPath` `UserDefaults` override.
+    /// 2. Common install locations for Homebrew, `~/.local/bin`, and system paths.
+    /// 3. The first path returned by `/usr/bin/env which codex`.
+    func resolveCodexExecutable() -> String? {
+        if let overridePath = resolveUserDefaultsOverride() {
+            return overridePath
+        }
+
+        if let commonPath = resolveCommonInstallLocation() {
+            return commonPath
+        }
+
+        return resolveViaWhich()
+    }
+
+    // MARK: - Resolution helpers
+
+    private func resolveUserDefaultsOverride() -> String? {
+        let override = UserDefaults.standard.string(forKey: "codexCLIPath")?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let override, !override.isEmpty else { return nil }
+
+        let expanded = NSString(string: override).expandingTildeInPath
+        return fileExistsAtPath(expanded) ? expanded : nil
+    }
+
+    private func resolveCommonInstallLocation() -> String? {
+        let candidates = [
+            "/opt/homebrew/bin/codex",
+            "/usr/local/bin/codex",
+            NSString(string: "~/.local/bin/codex").expandingTildeInPath,
+            "/usr/bin/codex",
+        ]
+        return candidates.first(where: fileExistsAtPath)
+    }
+
+    private func resolveViaWhich() -> String? {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         task.arguments = ["which", "codex"]
@@ -21,9 +71,19 @@ struct DefaultCodexCLIExecutor: CodexCLIExecutor {
         task.standardOutput = pipe
         try? task.run()
         task.waitUntilExit()
+
         let output = pipe.fileHandleForReading.readDataToEndOfFile()
-        let path = String(data: output, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return task.terminationStatus == 0 && !path.isEmpty
+        let path = String(data: output, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+        if task.terminationStatus == 0 && !path.isEmpty && fileExistsAtPath(path) {
+            return path
+        }
+        return nil
+    }
+
+    private func fileExistsAtPath(_ path: String) -> Bool {
+        FileManager.default.fileExists(atPath: path)
     }
 }
 

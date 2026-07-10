@@ -4,6 +4,7 @@ import Combine
 struct FloatingBallView: View {
     @ObservedObject var service: UsageRefreshService
     let onRefresh: () -> Void
+    let onSettings: () -> Void
     let onQuit: () -> Void
 
     @State private var now = Date()
@@ -13,6 +14,7 @@ struct FloatingBallView: View {
     private var error: UsageError? { service.error }
     private var primaryWindow: UsageWindow? { snapshot?.primary }
     private var secondaryWindow: UsageWindow? { snapshot?.secondary }
+    private var isOffline: Bool { error != nil && snapshot != nil }
 
     var body: some View {
         ZStack {
@@ -21,8 +23,8 @@ struct FloatingBallView: View {
                 .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
 
             VStack(spacing: 4) {
-                if let error = error {
-                    errorView(error)
+                if snapshot == nil && error != nil {
+                    errorView(error!)
                 } else if snapshot != nil {
                     usageView
                 } else {
@@ -35,6 +37,7 @@ struct FloatingBallView: View {
         .frame(width: 140, height: 140)
         .contextMenu {
             Button("Refresh") { onRefresh() }
+            Button("Settings") { onSettings() }
             Divider()
             Button("Quit") { onQuit() }
         }
@@ -64,6 +67,20 @@ struct FloatingBallView: View {
                 }
                 .padding(.top, 2)
             }
+
+            if isOffline {
+                VStack {
+                    Spacer()
+                    Text("Offline")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.gray.opacity(0.8))
+                        .clipShape(Capsule())
+                }
+                .frame(width: 100, height: 100)
+            }
         }
     }
 
@@ -75,13 +92,23 @@ struct FloatingBallView: View {
 
             Circle()
                 .trim(from: 0, to: ratio)
-                .stroke(progressColor(for: ratio), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(
+                    progressColor(for: ratio),
+                    style: StrokeStyle(
+                        lineWidth: lineWidth,
+                        lineCap: .round,
+                        dash: isOffline ? [4, 4] : []
+                    )
+                )
                 .frame(width: radius * 2, height: radius * 2)
                 .rotationEffect(.degrees(-90))
         }
     }
 
     private func progressColor(for ratio: Double) -> Color {
+        if isOffline {
+            return .gray
+        }
         switch ratio {
         case ..<0.1:
             return .red
@@ -169,6 +196,7 @@ struct FloatingBallView: View {
             fetchedAt: Date()
         )),
         onRefresh: {},
+        onSettings: {},
         onQuit: {}
     )
 }
