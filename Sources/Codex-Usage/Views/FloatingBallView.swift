@@ -7,6 +7,7 @@ struct FloatingBallView: View {
     let onQuit: () -> Void
 
     @State private var now = Date()
+    private let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
 
     private var snapshot: UsageSnapshot? { service.snapshot }
     private var error: UsageError? { service.error }
@@ -37,7 +38,7 @@ struct FloatingBallView: View {
             Divider()
             Button("Quit") { onQuit() }
         }
-        .onReceive(Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()) { _ in
+        .onReceive(timer) { _ in
             now = Date()
         }
     }
