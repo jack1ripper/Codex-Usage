@@ -1,5 +1,28 @@
 import Foundation
 
+struct RPCResponse: Codable {
+    let result: RPCRateLimitsResponse?
+    let error: RPCErrorMessage?
+}
+
+struct RPCErrorMessage: Codable {
+    let code: Int?
+    let message: String
+}
+
+struct RPCRateLimitsResponse: Codable {
+    struct RateLimitWindow: Codable {
+        let usedPercent: Double
+        let windowDurationMins: Int?
+        let resetsAt: Date?
+    }
+    struct RateLimits: Codable {
+        let primary: RateLimitWindow
+        let secondary: RateLimitWindow
+    }
+    let rateLimits: RateLimits
+}
+
 actor CodexRPCClient {
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
@@ -7,30 +30,15 @@ actor CodexRPCClient {
         d.dateDecodingStrategy = .secondsSince1970
         return d
     }()
-    
-    struct RPCRateLimitsResponse: Codable {
-        struct RateLimitWindow: Codable {
-            let usedPercent: Double
-            let windowDurationMins: Int?
-            let resetsAt: Date?
-        }
-        struct RateLimits: Codable {
-            let primary: RateLimitWindow
-            let secondary: RateLimitWindow
-        }
-        let rateLimits: RateLimits
-    }
-    
+
     nonisolated func parseRateLimitsResponse(_ data: Data) throws -> UsageSnapshot {
-        struct RPCResponse: Codable {
-            let result: RPCRateLimitsResponse?
-            let error: RPCErrorMessage?
+        let decoded: RPCResponse
+        do {
+            decoded = try decoder.decode(RPCResponse.self, from: data)
+        } catch {
+            throw UsageError.decodeFailed(error.localizedDescription)
         }
-        struct RPCErrorMessage: Codable, Error {
-            let message: String
-        }
-        
-        let decoded = try decoder.decode(RPCResponse.self, from: data)
+
         if let error = decoded.error {
             throw UsageError.rpcFailed(error.message)
         }
