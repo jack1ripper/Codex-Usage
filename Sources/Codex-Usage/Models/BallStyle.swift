@@ -49,8 +49,22 @@ enum UsageProgressLayout {
     }
 }
 
+enum FloatingPanelAppearance {
+    static let cornerRadius: CGFloat = 18
+    static let shadowOpacity = 0.12
+    static let shadowRadius: CGFloat = 10
+    static let shadowOffset = CGSize(width: 0, height: 4)
+    static let shadowSafetyMargin: CGFloat = 4
+
+    static var minimumShadowInset: CGFloat {
+        shadowRadius
+            + max(abs(shadowOffset.width), abs(shadowOffset.height))
+            + shadowSafetyMargin
+    }
+}
+
 enum FloatingPanelLayout {
-    static let shadowInset: CGFloat = 12
+    static let shadowInset = FloatingPanelAppearance.minimumShadowInset
 
     static func windowSize(for cardSize: CGSize) -> CGSize {
         CGSize(

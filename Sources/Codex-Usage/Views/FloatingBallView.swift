@@ -22,38 +22,44 @@ struct FloatingBallView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Shadow layer: same shape as the card so the corners align exactly.
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.black.opacity(0.14))
-                .frame(width: cardSize.width, height: cardSize.height)
-                .offset(x: 0, y: 6)
-                .blur(radius: 12)
+        HStack(spacing: 0) {
+            logoRail
 
-            HStack(spacing: 0) {
-                logoRail
+            Divider()
+                .padding(.vertical, 9)
 
-                Divider()
-                    .padding(.vertical, 9)
-
-                content
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 7)
-            }
-            .frame(width: cardSize.width, height: cardSize.height)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(.regularMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.white.opacity(0.54))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.black.opacity(0.10), lineWidth: 0.8)
-                    )
-            )
+            content
+                .padding(.horizontal, 8)
+                .padding(.vertical, 7)
         }
+        .frame(width: cardSize.width, height: cardSize.height)
+        .background(
+            RoundedRectangle(
+                cornerRadius: FloatingPanelAppearance.cornerRadius,
+                style: .continuous
+            )
+            .fill(.regularMaterial)
+            .shadow(
+                color: Color.black.opacity(FloatingPanelAppearance.shadowOpacity),
+                radius: FloatingPanelAppearance.shadowRadius,
+                x: FloatingPanelAppearance.shadowOffset.width,
+                y: FloatingPanelAppearance.shadowOffset.height
+            )
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: FloatingPanelAppearance.cornerRadius,
+                    style: .continuous
+                )
+                .fill(Color.white.opacity(0.54))
+            )
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: FloatingPanelAppearance.cornerRadius,
+                    style: .continuous
+                )
+                .stroke(Color.black.opacity(0.10), lineWidth: 0.8)
+            )
+        )
         .padding(FloatingPanelLayout.shadowInset)
         .background(Color.clear)
         .preferredColorScheme(.light)

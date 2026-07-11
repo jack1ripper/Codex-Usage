@@ -33,18 +33,29 @@ final class BallStyleTests: XCTestCase {
     func testFloatingPanelLayoutAddsShadowInsetsAndKeepsTopEdge() {
         XCTAssertEqual(
             FloatingPanelLayout.windowSize(for: CGSize(width: 220, height: 84)),
-            CGSize(width: 244, height: 108)
+            CGSize(width: 256, height: 120)
         )
 
-        let original = CGRect(x: 100, y: 200, width: 244, height: 108)
+        let original = CGRect(x: 100, y: 200, width: 256, height: 120)
         let resized = FloatingPanelLayout.resizedFrameKeepingTopEdge(
             original,
-            newSize: CGSize(width: 224, height: 100)
+            newSize: CGSize(width: 236, height: 120)
         )
 
         XCTAssertEqual(resized.minX, 100)
         XCTAssertEqual(resized.maxY, original.maxY)
-        XCTAssertEqual(resized.size, CGSize(width: 224, height: 100))
+        XCTAssertEqual(resized.size, CGSize(width: 236, height: 120))
+    }
+
+    func testFloatingPanelShadowMetricsReserveSafeDrawingArea() {
+        XCTAssertEqual(FloatingPanelAppearance.cornerRadius, 18)
+        XCTAssertEqual(FloatingPanelAppearance.shadowRadius, 10)
+        XCTAssertEqual(FloatingPanelAppearance.shadowOffset, CGSize(width: 0, height: 4))
+        XCTAssertEqual(FloatingPanelAppearance.minimumShadowInset, 18)
+        XCTAssertGreaterThanOrEqual(
+            FloatingPanelLayout.shadowInset,
+            FloatingPanelAppearance.minimumShadowInset
+        )
     }
 
     func testFloatingPanelLayoutChoosesTheScreenContainingSavedOrigin() throws {
