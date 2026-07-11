@@ -3,4 +3,5 @@
 xcuserdata
 *.xcodeproj
 *.app
+*.zip
 .worktrees/

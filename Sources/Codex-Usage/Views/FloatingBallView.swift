@@ -22,30 +22,38 @@ struct FloatingBallView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            logoRail
+        ZStack {
+            // Shadow layer: same shape as the card so the corners align exactly.
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.black.opacity(0.14))
+                .frame(width: cardSize.width, height: cardSize.height)
+                .offset(x: 0, y: 6)
+                .blur(radius: 12)
 
-            Divider()
-                .padding(.vertical, 9)
+            HStack(spacing: 0) {
+                logoRail
 
-            content
-                .padding(.horizontal, 8)
-                .padding(.vertical, 7)
+                Divider()
+                    .padding(.vertical, 9)
+
+                content
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 7)
+            }
+            .frame(width: cardSize.width, height: cardSize.height)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(.regularMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.white.opacity(0.54))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Color.black.opacity(0.10), lineWidth: 0.8)
+                    )
+            )
         }
-        .frame(width: cardSize.width, height: cardSize.height)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.regularMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.54))
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.black.opacity(0.10), lineWidth: 0.8)
-        )
-        .shadow(color: Color.black.opacity(0.16), radius: 12, x: 0, y: 6)
         .padding(FloatingPanelLayout.shadowInset)
         .background(Color.clear)
         .preferredColorScheme(.light)

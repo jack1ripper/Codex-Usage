@@ -35,8 +35,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+
         if FloatingPanelPreference.isEnabled() {
             windowController?.bringToFront()
+        } else {
+            windowController?.showSettings()
         }
         return true
     }
